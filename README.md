@@ -1,8 +1,11 @@
 # Akira 
 
-This is my cat Akira
 ![image](https://raw.githubusercontent.com/sabliran/AKIRA/refs/heads/main/unnamed.jpg)
+# This is my cat Akira
+
+
 A custom Linux multipurpose tray application that shows a floating overlay (image, text, PDF, or both) anywhere on the desktop when a global keyboard shortcut is pressed.
+
 
 
 
