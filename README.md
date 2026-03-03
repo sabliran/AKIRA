@@ -16,14 +16,16 @@ A custom Linux multipurpose tray application that shows a floating overlay (imag
 
 ## Features
 - **Multifunctional software** — designed to suit my needs.
-- **Global hotkey** — trigger from any application (default: `Ctrl+Shift+I`)
+- **Global hotkeys** — trigger from any application; all shortcuts are configurable
 - **Image, text, or both** — display a custom image, styled text, or both stacked together
 - **PDF viewer** — display any PDF page in the overlay; scroll wheel navigates pages; configurable render quality
-- **Reading line** — a horizontal guide that follows the cursor across the screen; toggle with `Ctrl+Shift+L`; right-click to lock the line at the current position
+- **Reading line** — a horizontal guide that follows the cursor; two modes: thin colored line or full-screen dimmer with a transparent reading slot
+- **Screen dimmer** — dims the entire screen except a transparent slot at the cursor's Y position, helping focus while reading
 - **System tray** — lives quietly in the tray; left-click or use the shortcut to toggle
 - **Customizable appearance** — background color, opacity, text font/size/color, window size
 - **Custom tray icon** — use any image as the tray & app-menu icon
-- **Settings GUI** — change everything at runtime without restarting
+- **Settings GUI** — open with `Ctrl+Shift+S` or from the tray menu; change everything at runtime without restarting
+- **Single instance** — launching a second copy exits immediately
 - **Persistent config** — settings saved to `~/.config/akira/config.json`
 
 ## Requirements
@@ -56,10 +58,10 @@ python3 main.py
 
 1. The app icon appears in your system tray after launch.
 2. Press **Ctrl+Shift+I** (or your configured shortcut) to show/hide the overlay.
-3. **Right-click** the tray icon → **Settings…** to configure:
+3. **Right-click** the tray icon → **Settings…** (or press `Ctrl+Shift+S`) to configure:
    - **Content tab** — choose Image, Text, Image + Text, or PDF mode
    - **Appearance tab** — colors, opacity, window size, custom tray icon
-   - **Shortcut tab** — record a new global shortcut
+   - **Shortcut tab** — record global shortcuts for the overlay and for opening Settings
    - **Reading Line tab** — enable/configure the reading line guide
 
 ### PDF mode
@@ -71,9 +73,14 @@ python3 main.py
 ### Reading line
 
 - Toggle with **Ctrl+Shift+L** (configurable)
-- **Right-click** the overlay to lock the line at the current Y position
+- Press **Escape** to turn it off from anywhere
+- **Right-click** the overlay to lock the line at the current Y position (unlocks on right-click again or left-click)
 - **Left-click** the overlay to turn the reading line off
-- Customise color, opacity, thickness, and length in the Reading Line tab
+- Two modes selectable in Settings:
+  - **Line** — thin colored horizontal line following the cursor
+  - **Screen dimmer** — dims the whole screen; a transparent slot shows the text at cursor height
+- Enable **Cycle through modes** to step through off → line → dimmer → off with one shortcut
+- Customise color, opacity, and thickness (line mode) or dimmer color, opacity, and slot height (screen dimmer mode)
 
 ## File structure
 
