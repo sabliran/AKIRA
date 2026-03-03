@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# install.sh — set up Shortcut Display on Linux (X11 / Wayland)
+# install.sh — set up Akira on Linux (X11 / Wayland)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_NAME="shortcut-display"
+APP_NAME="akira"
 DESKTOP_DIR="$HOME/.local/share/applications"
 AUTOSTART_DIR="$HOME/.config/autostart"
 
-echo "=== Shortcut Display — Installer ==="
+echo "=== Akira — Installer ==="
 echo
 
 # ── 1. Python dependencies ─────────────────────────────────────────────────
-echo "Installing Python dependencies (PyQt6, evdev)…"
+echo "Installing Python dependencies (PyQt6, pynput)…"
 
 install_pip() {
     pip3 install --user -q "$@" 2>/dev/null \
@@ -20,17 +20,17 @@ install_pip() {
 }
 
 if command -v pip3 &>/dev/null; then
-    install_pip PyQt6 evdev
+    install_pip PyQt6 pynput
 elif command -v pip &>/dev/null; then
-    pip install --user -q PyQt6 evdev 2>/dev/null \
-        || pip install --user -q --break-system-packages PyQt6 evdev
+    pip install --user -q PyQt6 pynput 2>/dev/null \
+        || pip install --user -q --break-system-packages PyQt6 pynput
 else
     if command -v dnf &>/dev/null; then
         echo "  pip not found — trying dnf…"
-        sudo dnf install -y python3-pyqt6 python3-evdev 2>/dev/null \
-            || { echo "  dnf failed. Install python3-pyqt6 and python3-evdev manually."; exit 1; }
+        sudo dnf install -y python3-pyqt6 python3-pynput 2>/dev/null \
+            || { echo "  dnf failed. Install python3-pyqt6 and python3-pynput manually."; exit 1; }
     else
-        echo "Error: pip not found. Install pip and re-run, or install PyQt6 and evdev manually."
+        echo "Error: pip not found. Install pip and re-run, or install PyQt6 and pynput manually."
         exit 1
     fi
 fi
@@ -44,10 +44,10 @@ chmod +x "$SCRIPT_DIR/main.py"
 mkdir -p "$DESKTOP_DIR"
 cat > "$DESKTOP_DIR/$APP_NAME.desktop" <<EOF
 [Desktop Entry]
-Name=Shortcut Display
+Name=Akira
 Comment=Display an image or text with a global keyboard shortcut
 Exec=/usr/bin/python3 $SCRIPT_DIR/main.py
-Icon=image-x-generic
+Icon=akira
 Type=Application
 Categories=Utility;
 Keywords=shortcut;image;text;overlay;display;
@@ -58,8 +58,8 @@ echo "App entry: $DESKTOP_DIR/$APP_NAME.desktop"
 mkdir -p "$AUTOSTART_DIR"
 cat > "$AUTOSTART_DIR/$APP_NAME.desktop" <<EOF
 [Desktop Entry]
-Name=Shortcut Display
-Comment=Start Shortcut Display on login
+Name=Akira
+Comment=Start Akira on login
 Exec=/usr/bin/python3 $SCRIPT_DIR/main.py
 Type=Application
 X-GNOME-Autostart-enabled=true
@@ -72,8 +72,8 @@ echo
 echo "=== Installation complete! ==="
 echo
 echo "  Run now:          python3 $SCRIPT_DIR/main.py"
-echo "  Or launch from:   your application menu → 'Shortcut Display'"
+echo "  Or launch from:   your application menu → 'Akira'"
 echo
 echo "  Default shortcut: Ctrl+Shift+I"
-echo "  Right-click the tray icon (SD) to open Settings or Quit."
+echo "  Right-click the tray icon to open Settings or Quit."
 echo

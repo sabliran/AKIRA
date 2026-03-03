@@ -1,11 +1,24 @@
 #!/usr/bin/env python3
-"""Shortcut Display — show an image or text anywhere with a global hotkey."""
+"""Akira — show an image or text anywhere with a global hotkey."""
 
+import os
 import sys
+from pathlib import Path
 
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
 from PyQt6.QtCore import Qt
+
+_APP_ICON_PATH = (
+    Path.home() / ".local" / "share" / "icons"
+    / "hicolor" / "256x256" / "apps" / "akira.png"
+)
+
+
+def _export_app_icon(icon: QIcon) -> None:
+    """Write the current icon as a PNG so the app-menu entry picks it up."""
+    _APP_ICON_PATH.parent.mkdir(parents=True, exist_ok=True)
+    icon.pixmap(256, 256).save(str(_APP_ICON_PATH))
 
 import config_manager
 from display_window import DisplayWindow
@@ -39,12 +52,13 @@ def _make_tray_icon(path: str = "") -> QIcon:
 
 def main() -> None:
     app = QApplication(sys.argv)
-    app.setApplicationName("Shortcut Display")
+    app.setApplicationName("Akira")
     app.setQuitOnLastWindowClosed(False)   # Keep running when all windows close
 
     config = config_manager.load()
 
     tray_icon = _make_tray_icon(config.get("tray_icon_path", ""))
+    _export_app_icon(tray_icon)
     app.setWindowIcon(tray_icon)
     display_win = DisplayWindow(config, icon=tray_icon)
 
@@ -70,6 +84,7 @@ def main() -> None:
             display_win.update_config(config)
             listener.update_shortcut(config["shortcut"])
             new_icon = _make_tray_icon(config.get("tray_icon_path", ""))
+            _export_app_icon(new_icon)
             app.setWindowIcon(new_icon)
             tray.setIcon(new_icon)
             display_win.setWindowIcon(new_icon)
@@ -79,11 +94,15 @@ def main() -> None:
 
     # ── System tray ────────────────────────────────────────────────────────
     tray = QSystemTrayIcon(tray_icon, app)
-    tray.setToolTip("Shortcut Display")
+    tray.setToolTip("Akira")
+
+    def restart() -> None:
+        os.execv(sys.executable, [sys.executable] + sys.argv)
 
     menu = QMenu()
     menu.addAction("Show / Hide").triggered.connect(display_win.toggle)
     menu.addAction("Settings…").triggered.connect(open_settings)
+    menu.addAction("Restart").triggered.connect(restart)
     menu.addSeparator()
     menu.addAction("Quit").triggered.connect(app.quit)
     tray.setContextMenu(menu)

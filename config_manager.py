@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-CONFIG_DIR = Path.home() / ".config" / "shortcut-display"
+CONFIG_DIR = Path.home() / ".config" / "akira"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 DEFAULTS = {

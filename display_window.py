@@ -41,36 +41,49 @@ class DisplayWindow(QWidget):
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
-        self.label = QLabel()
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label.setWordWrap(True)
-        layout.addWidget(self.label)
+        layout.setSpacing(12)
+
+        self._img_label = QLabel()
+        self._img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self._img_label, stretch=3)
+
+        self._txt_label = QLabel()
+        self._txt_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._txt_label.setWordWrap(True)
+        layout.addWidget(self._txt_label, stretch=1)
 
     # ── Content ────────────────────────────────────────────────────────────
 
     def _refresh_content(self) -> None:
-        if self.config["mode"] == "image" and self.config["image_path"]:
-            pix = QPixmap(self.config["image_path"])
+        mode = self.config["mode"]
+        show_image = mode in ("image", "both")
+        show_text = mode in ("text", "both")
+
+        self._img_label.setVisible(show_image)
+        self._txt_label.setVisible(show_text)
+
+        if show_image:
+            img_h = int((self.height() - 48) * (0.65 if mode == "both" else 1.0))
+            pix = QPixmap(self.config["image_path"]) if self.config["image_path"] else QPixmap()
             if not pix.isNull():
                 scaled = pix.scaled(
-                    self.width() - 48,
-                    self.height() - 48,
+                    self.width() - 48, img_h,
                     Qt.AspectRatioMode.KeepAspectRatio,
                     Qt.TransformationMode.SmoothTransformation,
                 )
-                self.label.setPixmap(scaled)
-                self.label.setStyleSheet("")
-                return
+                self._img_label.setPixmap(scaled)
+                self._img_label.setStyleSheet("")
+            else:
+                self._img_label.setPixmap(QPixmap())
+                self._img_label.setText("(no image set)")
+                self._img_label.setStyleSheet(f"color: {self.config['text_color']};")
 
-        # Text mode (or image failed to load)
-        self.label.setPixmap(QPixmap())
-        font = QFont()
-        font.setPointSize(self.config["text_font_size"])
-        self.label.setFont(font)
-        self.label.setText(
-            self.config["text"] if self.config["mode"] == "text" else "(no image set)"
-        )
-        self.label.setStyleSheet(f"color: {self.config['text_color']};")
+        if show_text:
+            font = QFont()
+            font.setPointSize(self.config["text_font_size"])
+            self._txt_label.setFont(font)
+            self._txt_label.setText(self.config["text"])
+            self._txt_label.setStyleSheet(f"color: {self.config['text_color']};")
 
     # ── Public API ─────────────────────────────────────────────────────────
 

@@ -169,7 +169,7 @@ class SettingsWindow(QDialog):
 
     def __init__(self, config: dict, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Shortcut Display — Settings")
+        self.setWindowTitle("Akira — Settings")
         self.setMinimumWidth(520)
         self._config = config.copy()
         self._current_shortcut = config["shortcut"]
@@ -206,11 +206,14 @@ class SettingsWindow(QDialog):
         mode_layout = QHBoxLayout(mode_box)
         self._rb_image = QRadioButton("Image")
         self._rb_text = QRadioButton("Text")
+        self._rb_both = QRadioButton("Image + Text")
         bg = QButtonGroup(self)
         bg.addButton(self._rb_image)
         bg.addButton(self._rb_text)
+        bg.addButton(self._rb_both)
         mode_layout.addWidget(self._rb_image)
         mode_layout.addWidget(self._rb_text)
+        mode_layout.addWidget(self._rb_both)
         mode_layout.addStretch()
         layout.addWidget(mode_box)
 
@@ -238,6 +241,7 @@ class SettingsWindow(QDialog):
 
         self._rb_image.toggled.connect(self._on_mode_toggle)
         self._rb_text.toggled.connect(self._on_mode_toggle)
+        self._rb_both.toggled.connect(self._on_mode_toggle)
         return w
 
     def _build_appearance_tab(self) -> QWidget:
@@ -340,10 +344,12 @@ class SettingsWindow(QDialog):
     def _load_values(self) -> None:
         c = self._config
 
-        if c["mode"] == "image":
-            self._rb_image.setChecked(True)
-        else:
+        if c["mode"] == "both":
+            self._rb_both.setChecked(True)
+        elif c["mode"] == "text":
             self._rb_text.setChecked(True)
+        else:
+            self._rb_image.setChecked(True)
         self._on_mode_toggle()
 
         self._image_path.setText(c["image_path"])
@@ -360,9 +366,8 @@ class SettingsWindow(QDialog):
         self._shortcut_label.setText(pynput_to_human(c["shortcut"]))
 
     def _on_mode_toggle(self) -> None:
-        is_image = self._rb_image.isChecked()
-        self._image_box.setVisible(is_image)
-        self._text_box.setVisible(not is_image)
+        self._image_box.setVisible(self._rb_image.isChecked() or self._rb_both.isChecked())
+        self._text_box.setVisible(self._rb_text.isChecked() or self._rb_both.isChecked())
 
     def _browse_image(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -387,8 +392,14 @@ class SettingsWindow(QDialog):
             self._shortcut_label.setText(pynput_to_human(self._current_shortcut))
 
     def _save(self) -> None:
+        if self._rb_both.isChecked():
+            mode = "both"
+        elif self._rb_text.isChecked():
+            mode = "text"
+        else:
+            mode = "image"
         new_config = {
-            "mode": "image" if self._rb_image.isChecked() else "text",
+            "mode": mode,
             "image_path": self._image_path.text().strip(),
             "text": self._text_edit.toPlainText(),
             "text_font_size": self._font_size.value(),
