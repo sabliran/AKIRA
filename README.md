@@ -4,7 +4,7 @@
 
 
 (vibe coded only)
-A custom Linux multipurpose tray application that shows a floating overlay (image, text, PDF, or both) anywhere on the desktop when a global keyboard shortcut is pressed.
+A custom Linux multipurpose tray application that shows a floating overlay (image, text, PDF, or both) anywhere on the desktop when a global keyboard shortcut is pressed. Purpose of this is to reference stuff you need instantly with a shortcut, I know alt-tab exist, but sometimes it's more than the alt-tab.
  
 Also a feature to help you read if you have issues focusing.
 Reading highlighting line that follows the cursor, or a blacked out screen showing only the line reading; again following the line.
