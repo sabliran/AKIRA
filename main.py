@@ -127,8 +127,7 @@ def main() -> None:
     # Left-click on tray icon toggles the display
     tray.activated.connect(
         lambda reason: display_win.toggle()
-        if reason == QSystemTrayIcon.ActivationReason.Trigger
-        else None
+        if reason == QSystemTrayIcon.ActivationReason.Trigger else None
     )
 
     tray.show()

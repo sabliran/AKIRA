@@ -9,6 +9,8 @@ DEFAULTS = {
     "image_path": "",
     "pdf_path": "",
     "pdf_scale": 1.0,         # rendering scale for PDF pages
+    "pdf_window_width": 900,
+    "pdf_window_height": 700,
     "tray_icon_path": "",     # custom tray icon (empty = built-in "SD" icon)
     "text": "Your text here",
     "text_font_size": 72,

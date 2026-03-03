@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QFormLayout, QGroupBox, QLabel, QLineEdit, QPushButton,
     QRadioButton, QButtonGroup, QTextEdit, QSpinBox,
     QSlider, QFileDialog, QColorDialog, QDialogButtonBox,
-    QCheckBox, QDoubleSpinBox,
+    QCheckBox, QComboBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
@@ -192,10 +192,13 @@ class SettingsWindow(QDialog):
         root.addWidget(tabs)
 
         btns = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+            QDialogButtonBox.StandardButton.Save
+            | QDialogButtonBox.StandardButton.Apply
+            | QDialogButtonBox.StandardButton.Cancel
         )
         btns.accepted.connect(self._save)
         btns.rejected.connect(self.reject)
+        btns.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(self._apply)
         root.addWidget(btns)
 
     def _build_content_tab(self) -> QWidget:
@@ -257,12 +260,24 @@ class SettingsWindow(QDialog):
         pdf_path_layout.addWidget(pdf_browse_btn)
         pdf_layout.addRow("File:", pdf_path_row)
 
-        self._pdf_scale = QDoubleSpinBox()
-        self._pdf_scale.setRange(0.5, 4.0)
-        self._pdf_scale.setSingleStep(0.25)
-        self._pdf_scale.setDecimals(2)
-        self._pdf_scale.setSuffix("×")
+        self._pdf_scale = QComboBox()
+        for label, val in [("0.50× (low)", 0.5), ("1.00× (sharp)", 1.0),
+                            ("1.50×", 1.5), ("2.00× (super-sampled)", 2.0),
+                            ("3.00×", 3.0), ("4.00×", 4.0)]:
+            self._pdf_scale.addItem(label, val)
         pdf_layout.addRow("Render scale:", self._pdf_scale)
+
+        self._pdf_win_size = QComboBox()
+        for label, val in [
+            ("700 × 900  (portrait S)", (700, 900)),
+            ("800 × 1050  (portrait M)", (800, 1050)),
+            ("1000 × 1300  (portrait L)", (1000, 1300)),
+            ("900 × 700  (landscape S)", (900, 700)),
+            ("1200 × 900  (landscape M)", (1200, 900)),
+            ("1400 × 1000  (landscape L)", (1400, 1000)),
+        ]:
+            self._pdf_win_size.addItem(label, val)
+        pdf_layout.addRow("Window size:", self._pdf_win_size)
         layout.addWidget(self._pdf_box)
 
         layout.addStretch()
@@ -308,21 +323,17 @@ class SettingsWindow(QDialog):
         form.addRow("Font size:", self._font_size)
 
         # Window size
-        size_row = QWidget()
-        size_layout = QHBoxLayout(size_row)
-        size_layout.setContentsMargins(0, 0, 0, 0)
-        self._win_width = QSpinBox()
-        self._win_width.setRange(200, 3840)
-        self._win_width.setSuffix(" px")
-        self._win_height = QSpinBox()
-        self._win_height.setRange(100, 2160)
-        self._win_height.setSuffix(" px")
-        size_layout.addWidget(QLabel("W:"))
-        size_layout.addWidget(self._win_width)
-        size_layout.addWidget(QLabel("  H:"))
-        size_layout.addWidget(self._win_height)
-        size_layout.addStretch()
-        form.addRow("Window size:", size_row)
+        self._win_size = QComboBox()
+        for label, val in [
+            ("400 × 300  (small)", (400, 300)),
+            ("600 × 450  (medium)", (600, 450)),
+            ("800 × 600  (default)", (800, 600)),
+            ("1000 × 750  (large)", (1000, 750)),
+            ("1200 × 900  (extra large)", (1200, 900)),
+            ("1600 × 1200  (huge)", (1600, 1200)),
+        ]:
+            self._win_size.addItem(label, val)
+        form.addRow("Window size (image/text):", self._win_size)
 
         # Tray icon
         tray_row = QWidget()
@@ -454,14 +465,25 @@ class SettingsWindow(QDialog):
         self._image_path.setText(c["image_path"])
         self._text_edit.setPlainText(c["text"])
         self._pdf_path.setText(c.get("pdf_path", ""))
-        self._pdf_scale.setValue(c.get("pdf_scale", 1.0))
+        saved_scale = c.get("pdf_scale", 1.0)
+        best = min(range(self._pdf_scale.count()),
+                   key=lambda i: abs(self._pdf_scale.itemData(i) - saved_scale))
+        self._pdf_scale.setCurrentIndex(best)
+        pw, ph = c.get("pdf_window_width", 900), c.get("pdf_window_height", 700)
+        best_pdf = min(range(self._pdf_win_size.count()),
+                       key=lambda i: abs(self._pdf_win_size.itemData(i)[0] - pw)
+                                   + abs(self._pdf_win_size.itemData(i)[1] - ph))
+        self._pdf_win_size.setCurrentIndex(best_pdf)
 
         self._bg_color.set_color(c["background_color"])
         self._opacity_slider.setValue(c["background_opacity"])
         self._text_color.set_color(c["text_color"])
         self._font_size.setValue(c["text_font_size"])
-        self._win_width.setValue(c["window_width"])
-        self._win_height.setValue(c["window_height"])
+        w, h = c["window_width"], c["window_height"]
+        best_win = min(range(self._win_size.count()),
+                       key=lambda i: abs(self._win_size.itemData(i)[0] - w)
+                                   + abs(self._win_size.itemData(i)[1] - h))
+        self._win_size.setCurrentIndex(best_win)
         self._tray_icon_path.setText(c.get("tray_icon_path", ""))
 
         self._shortcut_label.setText(pynput_to_human(c["shortcut"]))
@@ -514,7 +536,7 @@ class SettingsWindow(QDialog):
             self._rl_current_shortcut = dlg.get_shortcut()
             self._rl_shortcut_label.setText(pynput_to_human(self._rl_current_shortcut))
 
-    def _save(self) -> None:
+    def _build_config(self) -> dict:
         if self._rb_both.isChecked():
             mode = "both"
         elif self._rb_text.isChecked():
@@ -523,19 +545,21 @@ class SettingsWindow(QDialog):
             mode = "pdf"
         else:
             mode = "image"
-        new_config = {
+        return {
             "mode": mode,
             "image_path": self._image_path.text().strip(),
             "pdf_path": self._pdf_path.text().strip(),
-            "pdf_scale": self._pdf_scale.value(),
+            "pdf_scale": self._pdf_scale.currentData(),
+            "pdf_window_width": self._pdf_win_size.currentData()[0],
+            "pdf_window_height": self._pdf_win_size.currentData()[1],
             "text": self._text_edit.toPlainText(),
             "text_font_size": self._font_size.value(),
             "text_color": self._text_color.get_color(),
             "background_color": self._bg_color.get_color(),
             "background_opacity": self._opacity_slider.value(),
             "shortcut": self._current_shortcut,
-            "window_width": self._win_width.value(),
-            "window_height": self._win_height.value(),
+            "window_width": self._win_size.currentData()[0],
+            "window_height": self._win_size.currentData()[1],
             "tray_icon_path": self._tray_icon_path.text().strip(),
             "rl_active": self._rl_active.isChecked(),
             "rl_color": self._rl_color.get_color(),
@@ -544,5 +568,10 @@ class SettingsWindow(QDialog):
             "rl_length": self._rl_length.value(),
             "rl_shortcut": self._rl_current_shortcut,
         }
-        self.saved.emit(new_config)
+
+    def _apply(self) -> None:
+        self.saved.emit(self._build_config())
+
+    def _save(self) -> None:
+        self._apply()
         self.accept()

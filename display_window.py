@@ -31,6 +31,12 @@ class DisplayWindow(QWidget):
 
     # ── Setup ──────────────────────────────────────────────────────────────
 
+    def _window_size(self) -> tuple[int, int]:
+        if self.config.get("mode") == "pdf":
+            return (self.config.get("pdf_window_width", 900),
+                    self.config.get("pdf_window_height", 700))
+        return self.config["window_width"], self.config["window_height"]
+
     def _setup_window(self) -> None:
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -38,7 +44,8 @@ class DisplayWindow(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.resize(self.config["window_width"], self.config["window_height"])
+        w, h = self._window_size()
+        self.resize(w, h)
         self._center_on_screen()
 
     def _center_on_screen(self) -> None:
@@ -130,8 +137,8 @@ class DisplayWindow(QWidget):
         self._pdf_page_idx = max(0, min(self._pdf_page_idx, total - 1))
         page = self._pdf_doc.load_page(self._pdf_page_idx)
 
-        available_w = self.config["window_width"] - 48
-        available_h = self.config["window_height"] - 72
+        available_w = self.config.get("pdf_window_width", 900) - 48
+        available_h = self.config.get("pdf_window_height", 700) - 72
 
         # Compute scale so the page renders at exactly the display resolution
         # (no upscaling later = sharp result). pdf_scale multiplies this for
@@ -171,6 +178,7 @@ class DisplayWindow(QWidget):
         if self.isVisible():
             self.hide()
         else:
+            self._refresh_content()
             self._center_on_screen()
             self.show()
             self.raise_()
@@ -178,7 +186,8 @@ class DisplayWindow(QWidget):
 
     def update_config(self, config: dict) -> None:
         self.config = config.copy()
-        self.resize(config["window_width"], config["window_height"])
+        w, h = self._window_size()
+        self.resize(w, h)
         self._center_on_screen()
         self._refresh_content()
         self.update()
