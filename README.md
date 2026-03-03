@@ -17,8 +17,8 @@ A custom Linux multipurpose tray application that shows a floating overlay (imag
 ## Features
 - **Multifunctional software** — designed to suit my needs.
 - **Global hotkeys** — trigger from any application; all shortcuts are configurable
-- **Image, text, or both** — display a custom image, styled text, or both stacked together
-- **PDF viewer** — display any PDF page in the overlay; scroll wheel navigates pages; configurable render quality
+- **Image, text, or both** — display a custom image, styled text, or both stacked together so you can reference something
+- **PDF viewer** — display any PDF page in the overlay; scroll wheel navigates pages; configurable render quality    
 - **Reading line** — a horizontal guide that follows the cursor; two modes: thin colored line or full-screen dimmer with a transparent reading slot
 - **Screen dimmer** — dims the entire screen except a transparent slot at the cursor's Y position, helping focus while reading
 - **System tray** — lives quietly in the tray; left-click or use the shortcut to toggle
