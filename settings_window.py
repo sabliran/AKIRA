@@ -174,6 +174,7 @@ class SettingsWindow(QDialog):
         self.setMinimumWidth(520)
         self._config = config.copy()
         self._current_shortcut = config["shortcut"]
+        self._settings_current_shortcut = config.get("settings_shortcut", "<ctrl>+<shift>+s")
         self._rl_current_shortcut = config.get("rl_shortcut", "<ctrl>+<shift>+l")
         self._build_ui()
         self._load_values()
@@ -355,7 +356,7 @@ class SettingsWindow(QDialog):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
-        box = QGroupBox("Global keyboard shortcut")
+        box = QGroupBox("Show / Hide overlay")
         box_layout = QHBoxLayout(box)
         self._shortcut_label = QLabel()
         self._shortcut_label.setStyleSheet(
@@ -368,6 +369,20 @@ class SettingsWindow(QDialog):
         box_layout.addStretch()
         box_layout.addWidget(change_btn)
         layout.addWidget(box)
+
+        settings_box = QGroupBox("Open Settings")
+        settings_layout = QHBoxLayout(settings_box)
+        self._settings_shortcut_label = QLabel()
+        self._settings_shortcut_label.setStyleSheet(
+            "font-size:16px; font-weight:bold; padding:4px 14px;"
+            "background:#2b2b2b; border-radius:6px; border:1px solid #555;"
+        )
+        settings_change_btn = QPushButton("Change…")
+        settings_change_btn.clicked.connect(self._record_settings_shortcut)
+        settings_layout.addWidget(self._settings_shortcut_label)
+        settings_layout.addStretch()
+        settings_layout.addWidget(settings_change_btn)
+        layout.addWidget(settings_box)
 
         note = QLabel(
             "Uses X11 global hotkeys (via pynput / Xlib).\n"
@@ -388,13 +403,30 @@ class SettingsWindow(QDialog):
         self._rl_active = QCheckBox("Show reading line (horizontal guide that follows the cursor)")
         layout.addWidget(self._rl_active)
 
+        # Mode
+        mode_box = QGroupBox("Mode")
+        mode_layout = QHBoxLayout(mode_box)
+        self._rl_rb_line = QRadioButton("Line")
+        self._rl_rb_block = QRadioButton("Screen dimmer")
+        rl_mode_grp = QButtonGroup(self)
+        rl_mode_grp.addButton(self._rl_rb_line)
+        rl_mode_grp.addButton(self._rl_rb_block)
+        mode_layout.addWidget(self._rl_rb_line)
+        mode_layout.addWidget(self._rl_rb_block)
+        mode_layout.addStretch()
+        self._rl_rb_line.toggled.connect(self._on_rl_mode_toggle)
+        layout.addWidget(mode_box)
+
+        self._rl_cycle_modes = QCheckBox("Cycle through modes with shortcut (off → line → screen dimmer → off)")
+        layout.addWidget(self._rl_cycle_modes)
+
         # Appearance group
-        appearance_box = QGroupBox("Line appearance")
+        appearance_box = QGroupBox("Appearance")
         form = QFormLayout(appearance_box)
         form.setSpacing(12)
 
         self._rl_color = ColorButton(self._config.get("rl_color", "#ff0000"))
-        form.addRow("Color:", self._rl_color)
+        form.addRow("Line color:", self._rl_color)
 
         rl_opacity_row = QWidget()
         rl_op_layout = QHBoxLayout(rl_opacity_row)
@@ -407,7 +439,23 @@ class SettingsWindow(QDialog):
         )
         rl_op_layout.addWidget(self._rl_opacity_slider)
         rl_op_layout.addWidget(self._rl_opacity_label)
-        form.addRow("Opacity:", rl_opacity_row)
+        form.addRow("Line opacity:", rl_opacity_row)
+
+        self._rl_block_color = ColorButton(self._config.get("rl_block_color", "#000000"))
+        form.addRow("Dimmer color:", self._rl_block_color)
+
+        rl_block_opacity_row = QWidget()
+        rl_bop_layout = QHBoxLayout(rl_block_opacity_row)
+        rl_bop_layout.setContentsMargins(0, 0, 0, 0)
+        self._rl_block_opacity_slider = QSlider(Qt.Orientation.Horizontal)
+        self._rl_block_opacity_slider.setRange(0, 255)
+        self._rl_block_opacity_label = QLabel()
+        self._rl_block_opacity_slider.valueChanged.connect(
+            lambda v: self._rl_block_opacity_label.setText(f"{int(v / 255 * 100)}%")
+        )
+        rl_bop_layout.addWidget(self._rl_block_opacity_slider)
+        rl_bop_layout.addWidget(self._rl_block_opacity_label)
+        form.addRow("Dimmer opacity:", rl_block_opacity_row)
 
         rl_thickness_row = QWidget()
         rl_th_layout = QHBoxLayout(rl_thickness_row)
@@ -422,10 +470,18 @@ class SettingsWindow(QDialog):
         rl_th_layout.addWidget(self._rl_thickness_label)
         form.addRow("Thickness:", rl_thickness_row)
 
-        self._rl_length = QSpinBox()
-        self._rl_length.setRange(100, 3840)
-        self._rl_length.setSuffix(" px")
-        form.addRow("Length:", self._rl_length)
+        rl_slot_row = QWidget()
+        rl_slot_layout = QHBoxLayout(rl_slot_row)
+        rl_slot_layout.setContentsMargins(0, 0, 0, 0)
+        self._rl_slot_height = QSlider(Qt.Orientation.Horizontal)
+        self._rl_slot_height.setRange(4, 400)
+        self._rl_slot_height_label = QLabel()
+        self._rl_slot_height.valueChanged.connect(
+            lambda v: self._rl_slot_height_label.setText(f"{v} px")
+        )
+        rl_slot_layout.addWidget(self._rl_slot_height)
+        rl_slot_layout.addWidget(self._rl_slot_height_label)
+        form.addRow("Reading slot height:", rl_slot_row)
 
         layout.addWidget(appearance_box)
 
@@ -487,13 +543,31 @@ class SettingsWindow(QDialog):
         self._tray_icon_path.setText(c.get("tray_icon_path", ""))
 
         self._shortcut_label.setText(pynput_to_human(c["shortcut"]))
+        self._settings_shortcut_label.setText(pynput_to_human(c.get("settings_shortcut", "<ctrl>+<shift>+s")))
 
         self._rl_active.setChecked(c.get("rl_active", False))
+        self._rl_cycle_modes.setChecked(c.get("rl_cycle_modes", False))
+        if c.get("rl_mode", "line") == "block":
+            self._rl_rb_block.setChecked(True)
+        else:
+            self._rl_rb_line.setChecked(True)
         self._rl_color.set_color(c.get("rl_color", "#ff0000"))
         self._rl_opacity_slider.setValue(c.get("rl_opacity", 255))
+        self._rl_block_color.set_color(c.get("rl_block_color", "#000000"))
+        self._rl_block_opacity_slider.setValue(c.get("rl_block_opacity", 180))
         self._rl_thickness.setValue(c.get("rl_thickness", 2))
-        self._rl_length.setValue(c.get("rl_length", 800))
+        self._rl_slot_height.setValue(c.get("rl_slot_height", 40))
+        self._on_rl_mode_toggle()
         self._rl_shortcut_label.setText(pynput_to_human(c.get("rl_shortcut", "<ctrl>+<shift>+l")))
+
+    def _on_rl_mode_toggle(self) -> None:
+        line = self._rl_rb_line.isChecked()
+        self._rl_color.setEnabled(line)
+        self._rl_opacity_slider.setEnabled(line)
+        self._rl_thickness.setEnabled(line)
+        self._rl_block_color.setEnabled(not line)
+        self._rl_block_opacity_slider.setEnabled(not line)
+        self._rl_slot_height.setEnabled(not line)
 
     def _on_mode_toggle(self) -> None:
         self._image_box.setVisible(self._rb_image.isChecked() or self._rb_both.isChecked())
@@ -530,6 +604,12 @@ class SettingsWindow(QDialog):
             self._current_shortcut = dlg.get_shortcut()
             self._shortcut_label.setText(pynput_to_human(self._current_shortcut))
 
+    def _record_settings_shortcut(self) -> None:
+        dlg = _ShortcutRecorder(self._settings_current_shortcut, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._settings_current_shortcut = dlg.get_shortcut()
+            self._settings_shortcut_label.setText(pynput_to_human(self._settings_current_shortcut))
+
     def _record_rl_shortcut(self) -> None:
         dlg = _ShortcutRecorder(self._rl_current_shortcut, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
@@ -558,14 +638,19 @@ class SettingsWindow(QDialog):
             "background_color": self._bg_color.get_color(),
             "background_opacity": self._opacity_slider.value(),
             "shortcut": self._current_shortcut,
+            "settings_shortcut": self._settings_current_shortcut,
             "window_width": self._win_size.currentData()[0],
             "window_height": self._win_size.currentData()[1],
             "tray_icon_path": self._tray_icon_path.text().strip(),
             "rl_active": self._rl_active.isChecked(),
+            "rl_cycle_modes": self._rl_cycle_modes.isChecked(),
+            "rl_mode": "block" if self._rl_rb_block.isChecked() else "line",
             "rl_color": self._rl_color.get_color(),
             "rl_opacity": self._rl_opacity_slider.value(),
+            "rl_block_color": self._rl_block_color.get_color(),
+            "rl_block_opacity": self._rl_block_opacity_slider.value(),
             "rl_thickness": self._rl_thickness.value(),
-            "rl_length": self._rl_length.value(),
+            "rl_slot_height": self._rl_slot_height.value(),
             "rl_shortcut": self._rl_current_shortcut,
         }
 

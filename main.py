@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Akira — show an image or text anywhere with a global hotkey."""
 
+import fcntl
 import os
 import sys
 from pathlib import Path
@@ -57,6 +58,16 @@ def _make_tray_icon(path: str = "") -> QIcon:
 
 
 def main() -> None:
+    # Single-instance guard: grab an exclusive lock; exit if already held.
+    _lock_path = Path.home() / ".config" / "akira" / "akira.lock"
+    _lock_path.parent.mkdir(parents=True, exist_ok=True)
+    _lock_file = open(_lock_path, "w")
+    try:
+        fcntl.flock(_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        print("Akira is already running.")
+        sys.exit(1)
+
     app = QApplication(sys.argv)
     app.setApplicationName("Akira")
     app.setQuitOnLastWindowClosed(False)   # Keep running when all windows close
@@ -76,6 +87,9 @@ def main() -> None:
     rl.set_active(config.get("rl_active", False))
     rl_listener = HotkeyListener(config.get("rl_shortcut", "<ctrl>+<shift>+l"))
     rl_listener.triggered.connect(rl.toggle)
+    rl_esc_listener = HotkeyListener("<esc>")
+    rl_esc_listener.triggered.connect(lambda: rl.set_active(False) if rl.active else None)
+    rl_esc_listener.start()
     rl_listener.start()
 
     settings_win: SettingsWindow | None = None
@@ -100,6 +114,7 @@ def main() -> None:
             rl.update_config(config)
             rl.set_active(config.get("rl_active", False))
             rl_listener.update_shortcut(config["rl_shortcut"])
+            settings_listener.update_shortcut(config["settings_shortcut"])
             new_icon = _make_tray_icon(config.get("tray_icon_path", ""))
             _export_app_icon(new_icon)
             app.setWindowIcon(new_icon)
@@ -108,6 +123,10 @@ def main() -> None:
 
         settings_win.saved.connect(on_saved)
         settings_win.show()
+
+    settings_listener = HotkeyListener(config.get("settings_shortcut", "<ctrl>+<shift>+s"))
+    settings_listener.triggered.connect(open_settings)
+    settings_listener.start()
 
     # ── System tray ────────────────────────────────────────────────────────
     tray = QSystemTrayIcon(tray_icon, app)

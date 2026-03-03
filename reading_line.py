@@ -11,7 +11,7 @@ beneath the overlay. Toggle off to interact normally.
 
 from PyQt6.QtWidgets import QWidget, QApplication
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QPainter, QColor
+from PyQt6.QtGui import QPainter, QColor, QCursor
 
 
 class ReadingLine(QWidget):
@@ -29,6 +29,7 @@ class ReadingLine(QWidget):
         self._cy = 0
         self._locked = False   # True = line stays at _locked_y even as cursor moves
         self._locked_y = 0
+        self._cycle_mode: str | None = None   # overrides config["rl_mode"] while cycling
         self._setup_window()
 
         self._timer = QTimer(self)
@@ -57,14 +58,44 @@ class ReadingLine(QWidget):
 
     # ── Public API ─────────────────────────────────────────────────────────
 
+    def _effective_mode(self) -> str:
+        """Return the active display mode, respecting any cycle override."""
+        if self._cycle_mode is not None:
+            return self._cycle_mode
+        return self.config.get("rl_mode", "line")
+
     def toggle(self) -> None:
+        if self.config.get("rl_cycle_modes", False):
+            self._cycle()
+            return
         self._active = not self._active
         if self._active:
+            self._cycle_mode = None
             self._cover_screen()
+            self._update_mouse_transparency()
             self.show()
             self.raise_()
         else:
-            self._locked = False
+            self._set_locked(False)
+            self.hide()
+
+    def _cycle(self) -> None:
+        """Cycle through: off → line → block → off."""
+        if not self._active:
+            self._cycle_mode = "line"
+            self._active = True
+            self._cover_screen()
+            self._update_mouse_transparency()
+            self.show()
+            self.raise_()
+        elif self._cycle_mode == "line":
+            self._cycle_mode = "block"
+            self._update_mouse_transparency()
+            self.update()
+        else:
+            self._cycle_mode = None
+            self._set_locked(False)
+            self._active = False
             self.hide()
 
     @property
@@ -77,8 +108,26 @@ class ReadingLine(QWidget):
 
     def update_config(self, config: dict) -> None:
         self.config = config.copy()
+        self._cycle_mode = None   # reset cycle state on config change
         if self._active:
+            self._update_mouse_transparency()
             self.update()
+
+    # ── Internal ───────────────────────────────────────────────────────────
+
+    def _set_locked(self, locked: bool) -> None:
+        self._locked = locked
+        self._update_mouse_transparency()
+
+    def _update_mouse_transparency(self) -> None:
+        """Transparent to mouse input when locked or in block mode.
+
+        Block mode tracks cursor via QCursor.pos() on each timer tick so it
+        doesn't need mouseMoveEvent; scroll/clicks pass through freely.
+        """
+        block = self._effective_mode() == "block"
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+                          self._locked or block)
 
     # ── Qt overrides ───────────────────────────────────────────────────────
 
@@ -91,47 +140,58 @@ class ReadingLine(QWidget):
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.RightButton:
-            self._locked = not self._locked
             if self._locked:
+                self._set_locked(False)
+            else:
                 self._locked_y = self._cy
+                self._set_locked(True)
         else:
-            self._locked = False
+            self._set_locked(False)
             self.toggle()
 
     def _tick(self) -> None:
         if self._active:
+            if not self._locked and self._effective_mode() == "block":
+                self._cy = QCursor.pos().y()
             self.update()
 
     def paintEvent(self, _event) -> None:
         painter = QPainter(self)
-
-        # Erase the whole surface to fully transparent
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
-        painter.fillRect(self.rect(), Qt.GlobalColor.transparent)
-
-        thickness = max(self.config.get("rl_thickness", 2), 1)
-        half_len = self.config.get("rl_length", 800) // 2
-        color = QColor(self.config.get("rl_color", "#ff0000"))
-        color.setAlpha(self.config.get("rl_opacity", 255))
 
         ly = self._locked_y if self._locked else self._cy
 
-        painter.fillRect(
-            self._cx - half_len, ly - thickness // 2,
-            half_len * 2, thickness,
-            color,
-        )
-
-        # When locked, draw small vertical tick marks at both ends as a visual cue
-        if self._locked:
-            tick_h = max(thickness * 5, 10)
+        if self._effective_mode() == "block":
+            color = QColor(self.config.get("rl_block_color", "#000000"))
+            color.setAlpha(self.config.get("rl_block_opacity", 180))
+            # Cover entire screen with overlay color
+            painter.fillRect(self.rect(), color)
+            # Punch a transparent reading slot at the cursor's Y
+            slot_h = max(self.config.get("rl_slot_height", 40), 4)
+            painter.fillRect(0, ly - slot_h // 2, self.width(), slot_h,
+                             Qt.GlobalColor.transparent)
+        else:
+            color = QColor(self.config.get("rl_color", "#ff0000"))
+            color.setAlpha(self.config.get("rl_opacity", 255))
+            # Original line mode: transparent background, colored line
+            painter.fillRect(self.rect(), Qt.GlobalColor.transparent)
+            thickness = max(self.config.get("rl_thickness", 2), 1)
+            half_len = 3799 // 2
             painter.fillRect(
-                self._cx - half_len, ly - tick_h // 2,
-                max(thickness, 2), tick_h,
+                self._cx - half_len, ly - thickness // 2,
+                half_len * 2, thickness,
                 color,
             )
-            painter.fillRect(
-                self._cx + half_len - max(thickness, 2), ly - tick_h // 2,
-                max(thickness, 2), tick_h,
-                color,
-            )
+            # When locked, draw small vertical tick marks at both ends
+            if self._locked:
+                tick_h = max(thickness * 5, 10)
+                painter.fillRect(
+                    self._cx - half_len, ly - tick_h // 2,
+                    max(thickness, 2), tick_h,
+                    color,
+                )
+                painter.fillRect(
+                    self._cx + half_len - max(thickness, 2), ly - tick_h // 2,
+                    max(thickness, 2), tick_h,
+                    color,
+                )

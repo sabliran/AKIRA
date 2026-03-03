@@ -18,14 +18,19 @@ DEFAULTS = {
     "background_color": "#1a1a2e",
     "background_opacity": 220,   # 0-255
     "shortcut": "<ctrl>+<shift>+i",
+    "settings_shortcut": "<ctrl>+<shift>+s",
     "window_width": 800,
     "window_height": 600,
     # Reading-line feature
     "rl_active": False,
+    "rl_cycle_modes": False,     # True = shortcut cycles off→line→block→off
+    "rl_mode": "line",           # "line" or "block"
     "rl_color": "#ff0000",
     "rl_opacity": 255,           # 0-255
     "rl_thickness": 2,
-    "rl_length": 800,
+    "rl_block_color": "#000000",
+    "rl_block_opacity": 180,     # 0-255
+    "rl_slot_height": 40,        # px — transparent reading slot height in block mode
     "rl_shortcut": "<ctrl>+<shift>+l",
 }
 
