@@ -3,7 +3,7 @@
 ![image](https://raw.githubusercontent.com/sabliran/AKIRA/refs/heads/main/unnamed.jpg)
 
 
-
+(vibe coded only)
 A custom Linux multipurpose tray application that shows a floating overlay (image, text, PDF, or both) anywhere on the desktop when a global keyboard shortcut is pressed.
 
 
