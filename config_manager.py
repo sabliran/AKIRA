@@ -5,8 +5,10 @@ CONFIG_DIR = Path.home() / ".config" / "akira"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 DEFAULTS = {
-    "mode": "image",          # "image" or "text"
+    "mode": "image",          # "image", "text", "both", or "pdf"
     "image_path": "",
+    "pdf_path": "",
+    "pdf_scale": 1.0,         # rendering scale for PDF pages
     "tray_icon_path": "",     # custom tray icon (empty = built-in "SD" icon)
     "text": "Your text here",
     "text_font_size": 72,
@@ -19,6 +21,7 @@ DEFAULTS = {
     # Reading-line feature
     "rl_active": False,
     "rl_color": "#ff0000",
+    "rl_opacity": 255,           # 0-255
     "rl_thickness": 2,
     "rl_length": 800,
     "rl_shortcut": "<ctrl>+<shift>+l",

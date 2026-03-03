@@ -1,6 +1,12 @@
 from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap, QColor, QPainter, QFont, QPainterPath, QIcon
+from PyQt6.QtGui import QPixmap, QColor, QPainter, QFont, QPainterPath, QIcon, QImage
+
+try:
+    import fitz  # PyMuPDF
+    _FITZ_AVAILABLE = True
+except ImportError:
+    _FITZ_AVAILABLE = False
 
 
 class DisplayWindow(QWidget):
@@ -13,6 +19,9 @@ class DisplayWindow(QWidget):
     def __init__(self, config: dict, icon: QIcon | None = None):
         super().__init__()
         self.config = config.copy()
+        self._pdf_doc = None
+        self._pdf_path_loaded = ""
+        self._pdf_page_idx = 0
         self._setup_window()
         self._build_ui()
         self._refresh_content()
@@ -58,9 +67,14 @@ class DisplayWindow(QWidget):
         mode = self.config["mode"]
         show_image = mode in ("image", "both")
         show_text = mode in ("text", "both")
+        show_pdf = mode == "pdf"
 
-        self._img_label.setVisible(show_image)
-        self._txt_label.setVisible(show_text)
+        self._img_label.setVisible(show_image or show_pdf)
+        self._txt_label.setVisible(show_text or show_pdf)
+
+        if show_pdf:
+            self._render_pdf_page()
+            return
 
         if show_image:
             img_h = int((self.height() - 48) * (0.65 if mode == "both" else 1.0))
@@ -84,6 +98,71 @@ class DisplayWindow(QWidget):
             self._txt_label.setFont(font)
             self._txt_label.setText(self.config["text"])
             self._txt_label.setStyleSheet(f"color: {self.config['text_color']};")
+
+    def _render_pdf_page(self) -> None:
+        if not _FITZ_AVAILABLE:
+            self._img_label.setText("PyMuPDF not installed.\nRun: pip install PyMuPDF")
+            self._img_label.setStyleSheet(f"color: {self.config['text_color']};")
+            self._txt_label.setText("")
+            return
+
+        path = self.config.get("pdf_path", "")
+        if not path:
+            self._img_label.setPixmap(QPixmap())
+            self._img_label.setText("(no PDF set)")
+            self._img_label.setStyleSheet(f"color: {self.config['text_color']};")
+            self._txt_label.setText("")
+            return
+
+        if path != self._pdf_path_loaded:
+            try:
+                self._pdf_doc = fitz.open(path)
+                self._pdf_path_loaded = path
+                self._pdf_page_idx = 0
+            except Exception as e:
+                self._img_label.setText(f"Error loading PDF:\n{e}")
+                self._img_label.setStyleSheet(f"color: {self.config['text_color']};")
+                self._txt_label.setText("")
+                return
+
+        total = len(self._pdf_doc)
+        self._pdf_page_idx = max(0, min(self._pdf_page_idx, total - 1))
+        page = self._pdf_doc.load_page(self._pdf_page_idx)
+
+        available_w = self.config["window_width"] - 48
+        available_h = self.config["window_height"] - 72
+
+        # Compute scale so the page renders at exactly the display resolution
+        # (no upscaling later = sharp result). pdf_scale multiplies this for
+        # extra quality (2× = super-sampled, then scaled down).
+        rect = page.rect
+        fit_scale = min(available_w / rect.width, available_h / rect.height)
+        quality = max(0.5, float(self.config.get("pdf_scale", 1.0)))
+        render_scale = fit_scale * quality
+
+        mat = fitz.Matrix(render_scale, render_scale)
+        pix = page.get_pixmap(matrix=mat)
+
+        img = QImage(pix.samples, pix.width, pix.height, pix.stride,
+                     QImage.Format.Format_RGB888)
+        qt_pix = QPixmap.fromImage(img)
+
+        # Only scale down if quality > 1 (super-sampled); at 1× the pixmap
+        # already matches the display area exactly.
+        if quality > 1.0:
+            qt_pix = qt_pix.scaled(
+                available_w, available_h,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        self._img_label.setPixmap(qt_pix)
+        self._img_label.setStyleSheet("")
+
+        font = QFont()
+        font.setPointSize(11)
+        self._txt_label.setFont(font)
+        self._txt_label.setText(f"Page {self._pdf_page_idx + 1} / {total}  •  scroll to navigate")
+        self._txt_label.setStyleSheet(f"color: {self.config['text_color']};")
 
     # ── Public API ─────────────────────────────────────────────────────────
 
@@ -122,3 +201,13 @@ class DisplayWindow(QWidget):
 
     def mousePressEvent(self, _event) -> None:
         self.hide()
+
+    def wheelEvent(self, event) -> None:
+        if self.config.get("mode") == "pdf" and self._pdf_doc:
+            delta = event.angleDelta().y()
+            if delta < 0:
+                self._pdf_page_idx = min(self._pdf_page_idx + 1, len(self._pdf_doc) - 1)
+            elif delta > 0:
+                self._pdf_page_idx = max(self._pdf_page_idx - 1, 0)
+            self._render_pdf_page()
+            event.accept()

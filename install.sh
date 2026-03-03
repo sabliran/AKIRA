@@ -11,7 +11,7 @@ echo "=== Akira — Installer ==="
 echo
 
 # ── 1. Python dependencies ─────────────────────────────────────────────────
-echo "Installing Python dependencies (PyQt6, pynput)…"
+echo "Installing Python dependencies (PyQt6, pynput, PyMuPDF)…"
 
 install_pip() {
     pip3 install --user -q "$@" 2>/dev/null \
@@ -20,10 +20,10 @@ install_pip() {
 }
 
 if command -v pip3 &>/dev/null; then
-    install_pip PyQt6 pynput
+    install_pip PyQt6 pynput PyMuPDF
 elif command -v pip &>/dev/null; then
-    pip install --user -q PyQt6 pynput 2>/dev/null \
-        || pip install --user -q --break-system-packages PyQt6 pynput
+    pip install --user -q PyQt6 pynput PyMuPDF 2>/dev/null \
+        || pip install --user -q --break-system-packages PyQt6 pynput PyMuPDF
 else
     if command -v dnf &>/dev/null; then
         echo "  pip not found — trying dnf…"

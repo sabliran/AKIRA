@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QFormLayout, QGroupBox, QLabel, QLineEdit, QPushButton,
     QRadioButton, QButtonGroup, QTextEdit, QSpinBox,
     QSlider, QFileDialog, QColorDialog, QDialogButtonBox,
-    QCheckBox,
+    QCheckBox, QDoubleSpinBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
@@ -210,13 +210,16 @@ class SettingsWindow(QDialog):
         self._rb_image = QRadioButton("Image")
         self._rb_text = QRadioButton("Text")
         self._rb_both = QRadioButton("Image + Text")
+        self._rb_pdf = QRadioButton("PDF")
         bg = QButtonGroup(self)
         bg.addButton(self._rb_image)
         bg.addButton(self._rb_text)
         bg.addButton(self._rb_both)
+        bg.addButton(self._rb_pdf)
         mode_layout.addWidget(self._rb_image)
         mode_layout.addWidget(self._rb_text)
         mode_layout.addWidget(self._rb_both)
+        mode_layout.addWidget(self._rb_pdf)
         mode_layout.addStretch()
         layout.addWidget(mode_box)
 
@@ -240,11 +243,34 @@ class SettingsWindow(QDialog):
         txt_layout.addWidget(self._text_edit)
         layout.addWidget(self._text_box)
 
+        # PDF file
+        self._pdf_box = QGroupBox("PDF file")
+        pdf_layout = QFormLayout(self._pdf_box)
+        pdf_path_row = QWidget()
+        pdf_path_layout = QHBoxLayout(pdf_path_row)
+        pdf_path_layout.setContentsMargins(0, 0, 0, 0)
+        self._pdf_path = QLineEdit()
+        self._pdf_path.setPlaceholderText("Path to PDF file…")
+        pdf_browse_btn = QPushButton("Browse…")
+        pdf_browse_btn.clicked.connect(self._browse_pdf)
+        pdf_path_layout.addWidget(self._pdf_path)
+        pdf_path_layout.addWidget(pdf_browse_btn)
+        pdf_layout.addRow("File:", pdf_path_row)
+
+        self._pdf_scale = QDoubleSpinBox()
+        self._pdf_scale.setRange(0.5, 4.0)
+        self._pdf_scale.setSingleStep(0.25)
+        self._pdf_scale.setDecimals(2)
+        self._pdf_scale.setSuffix("×")
+        pdf_layout.addRow("Render scale:", self._pdf_scale)
+        layout.addWidget(self._pdf_box)
+
         layout.addStretch()
 
         self._rb_image.toggled.connect(self._on_mode_toggle)
         self._rb_text.toggled.connect(self._on_mode_toggle)
         self._rb_both.toggled.connect(self._on_mode_toggle)
+        self._rb_pdf.toggled.connect(self._on_mode_toggle)
         return w
 
     def _build_appearance_tab(self) -> QWidget:
@@ -359,10 +385,31 @@ class SettingsWindow(QDialog):
         self._rl_color = ColorButton(self._config.get("rl_color", "#ff0000"))
         form.addRow("Color:", self._rl_color)
 
-        self._rl_thickness = QSpinBox()
+        rl_opacity_row = QWidget()
+        rl_op_layout = QHBoxLayout(rl_opacity_row)
+        rl_op_layout.setContentsMargins(0, 0, 0, 0)
+        self._rl_opacity_slider = QSlider(Qt.Orientation.Horizontal)
+        self._rl_opacity_slider.setRange(0, 255)
+        self._rl_opacity_label = QLabel()
+        self._rl_opacity_slider.valueChanged.connect(
+            lambda v: self._rl_opacity_label.setText(f"{int(v / 255 * 100)}%")
+        )
+        rl_op_layout.addWidget(self._rl_opacity_slider)
+        rl_op_layout.addWidget(self._rl_opacity_label)
+        form.addRow("Opacity:", rl_opacity_row)
+
+        rl_thickness_row = QWidget()
+        rl_th_layout = QHBoxLayout(rl_thickness_row)
+        rl_th_layout.setContentsMargins(0, 0, 0, 0)
+        self._rl_thickness = QSlider(Qt.Orientation.Horizontal)
         self._rl_thickness.setRange(1, 20)
-        self._rl_thickness.setSuffix(" px")
-        form.addRow("Thickness:", self._rl_thickness)
+        self._rl_thickness_label = QLabel()
+        self._rl_thickness.valueChanged.connect(
+            lambda v: self._rl_thickness_label.setText(f"{v} px")
+        )
+        rl_th_layout.addWidget(self._rl_thickness)
+        rl_th_layout.addWidget(self._rl_thickness_label)
+        form.addRow("Thickness:", rl_thickness_row)
 
         self._rl_length = QSpinBox()
         self._rl_length.setRange(100, 3840)
@@ -398,12 +445,16 @@ class SettingsWindow(QDialog):
             self._rb_both.setChecked(True)
         elif c["mode"] == "text":
             self._rb_text.setChecked(True)
+        elif c["mode"] == "pdf":
+            self._rb_pdf.setChecked(True)
         else:
             self._rb_image.setChecked(True)
         self._on_mode_toggle()
 
         self._image_path.setText(c["image_path"])
         self._text_edit.setPlainText(c["text"])
+        self._pdf_path.setText(c.get("pdf_path", ""))
+        self._pdf_scale.setValue(c.get("pdf_scale", 1.0))
 
         self._bg_color.set_color(c["background_color"])
         self._opacity_slider.setValue(c["background_opacity"])
@@ -417,6 +468,7 @@ class SettingsWindow(QDialog):
 
         self._rl_active.setChecked(c.get("rl_active", False))
         self._rl_color.set_color(c.get("rl_color", "#ff0000"))
+        self._rl_opacity_slider.setValue(c.get("rl_opacity", 255))
         self._rl_thickness.setValue(c.get("rl_thickness", 2))
         self._rl_length.setValue(c.get("rl_length", 800))
         self._rl_shortcut_label.setText(pynput_to_human(c.get("rl_shortcut", "<ctrl>+<shift>+l")))
@@ -424,6 +476,7 @@ class SettingsWindow(QDialog):
     def _on_mode_toggle(self) -> None:
         self._image_box.setVisible(self._rb_image.isChecked() or self._rb_both.isChecked())
         self._text_box.setVisible(self._rb_text.isChecked() or self._rb_both.isChecked())
+        self._pdf_box.setVisible(self._rb_pdf.isChecked())
 
     def _browse_image(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -440,6 +493,14 @@ class SettingsWindow(QDialog):
         )
         if path:
             self._tray_icon_path.setText(path)
+
+    def _browse_pdf(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select PDF", "",
+            "PDF files (*.pdf)",
+        )
+        if path:
+            self._pdf_path.setText(path)
 
     def _record_shortcut(self) -> None:
         dlg = _ShortcutRecorder(self._current_shortcut, self)
@@ -458,11 +519,15 @@ class SettingsWindow(QDialog):
             mode = "both"
         elif self._rb_text.isChecked():
             mode = "text"
+        elif self._rb_pdf.isChecked():
+            mode = "pdf"
         else:
             mode = "image"
         new_config = {
             "mode": mode,
             "image_path": self._image_path.text().strip(),
+            "pdf_path": self._pdf_path.text().strip(),
+            "pdf_scale": self._pdf_scale.value(),
             "text": self._text_edit.toPlainText(),
             "text_font_size": self._font_size.value(),
             "text_color": self._text_color.get_color(),
@@ -474,6 +539,7 @@ class SettingsWindow(QDialog):
             "tray_icon_path": self._tray_icon_path.text().strip(),
             "rl_active": self._rl_active.isChecked(),
             "rl_color": self._rl_color.get_color(),
+            "rl_opacity": self._rl_opacity_slider.value(),
             "rl_thickness": self._rl_thickness.value(),
             "rl_length": self._rl_length.value(),
             "rl_shortcut": self._rl_current_shortcut,
