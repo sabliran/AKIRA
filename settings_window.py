@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
     QFormLayout, QGroupBox, QLabel, QLineEdit, QPushButton,
     QRadioButton, QButtonGroup, QTextEdit, QSpinBox,
     QSlider, QFileDialog, QColorDialog, QDialogButtonBox,
+    QCheckBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
@@ -173,6 +174,7 @@ class SettingsWindow(QDialog):
         self.setMinimumWidth(520)
         self._config = config.copy()
         self._current_shortcut = config["shortcut"]
+        self._rl_current_shortcut = config.get("rl_shortcut", "<ctrl>+<shift>+l")
         self._build_ui()
         self._load_values()
 
@@ -186,6 +188,7 @@ class SettingsWindow(QDialog):
         tabs.addTab(self._build_content_tab(), "Content")
         tabs.addTab(self._build_appearance_tab(), "Appearance")
         tabs.addTab(self._build_shortcut_tab(), "Shortcut")
+        tabs.addTab(self._build_reading_line_tab(), "Reading Line")
         root.addWidget(tabs)
 
         btns = QDialogButtonBox(
@@ -339,6 +342,53 @@ class SettingsWindow(QDialog):
         layout.addStretch()
         return w
 
+    def _build_reading_line_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(14)
+
+        self._rl_active = QCheckBox("Show reading line (horizontal guide that follows the cursor)")
+        layout.addWidget(self._rl_active)
+
+        # Appearance group
+        appearance_box = QGroupBox("Line appearance")
+        form = QFormLayout(appearance_box)
+        form.setSpacing(12)
+
+        self._rl_color = ColorButton(self._config.get("rl_color", "#ff0000"))
+        form.addRow("Color:", self._rl_color)
+
+        self._rl_thickness = QSpinBox()
+        self._rl_thickness.setRange(1, 20)
+        self._rl_thickness.setSuffix(" px")
+        form.addRow("Thickness:", self._rl_thickness)
+
+        self._rl_length = QSpinBox()
+        self._rl_length.setRange(100, 3840)
+        self._rl_length.setSuffix(" px")
+        form.addRow("Length:", self._rl_length)
+
+        layout.addWidget(appearance_box)
+
+        # Shortcut group
+        sc_box = QGroupBox("Toggle shortcut")
+        sc_layout = QHBoxLayout(sc_box)
+        self._rl_shortcut_label = QLabel()
+        self._rl_shortcut_label.setStyleSheet(
+            "font-size:16px; font-weight:bold; padding:4px 14px;"
+            "background:#2b2b2b; border-radius:6px; border:1px solid #555;"
+        )
+        rl_change_btn = QPushButton("Change…")
+        rl_change_btn.clicked.connect(self._record_rl_shortcut)
+        sc_layout.addWidget(self._rl_shortcut_label)
+        sc_layout.addStretch()
+        sc_layout.addWidget(rl_change_btn)
+        layout.addWidget(sc_box)
+
+        layout.addStretch()
+        return w
+
     # ── Internal helpers ───────────────────────────────────────────────────
 
     def _load_values(self) -> None:
@@ -364,6 +414,12 @@ class SettingsWindow(QDialog):
         self._tray_icon_path.setText(c.get("tray_icon_path", ""))
 
         self._shortcut_label.setText(pynput_to_human(c["shortcut"]))
+
+        self._rl_active.setChecked(c.get("rl_active", False))
+        self._rl_color.set_color(c.get("rl_color", "#ff0000"))
+        self._rl_thickness.setValue(c.get("rl_thickness", 2))
+        self._rl_length.setValue(c.get("rl_length", 800))
+        self._rl_shortcut_label.setText(pynput_to_human(c.get("rl_shortcut", "<ctrl>+<shift>+l")))
 
     def _on_mode_toggle(self) -> None:
         self._image_box.setVisible(self._rb_image.isChecked() or self._rb_both.isChecked())
@@ -391,6 +447,12 @@ class SettingsWindow(QDialog):
             self._current_shortcut = dlg.get_shortcut()
             self._shortcut_label.setText(pynput_to_human(self._current_shortcut))
 
+    def _record_rl_shortcut(self) -> None:
+        dlg = _ShortcutRecorder(self._rl_current_shortcut, self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._rl_current_shortcut = dlg.get_shortcut()
+            self._rl_shortcut_label.setText(pynput_to_human(self._rl_current_shortcut))
+
     def _save(self) -> None:
         if self._rb_both.isChecked():
             mode = "both"
@@ -410,6 +472,11 @@ class SettingsWindow(QDialog):
             "window_width": self._win_width.value(),
             "window_height": self._win_height.value(),
             "tray_icon_path": self._tray_icon_path.text().strip(),
+            "rl_active": self._rl_active.isChecked(),
+            "rl_color": self._rl_color.get_color(),
+            "rl_thickness": self._rl_thickness.value(),
+            "rl_length": self._rl_length.value(),
+            "rl_shortcut": self._rl_current_shortcut,
         }
         self.saved.emit(new_config)
         self.accept()

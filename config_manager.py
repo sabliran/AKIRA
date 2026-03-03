@@ -16,6 +16,12 @@ DEFAULTS = {
     "shortcut": "<ctrl>+<shift>+i",
     "window_width": 800,
     "window_height": 600,
+    # Reading-line feature
+    "rl_active": False,
+    "rl_color": "#ff0000",
+    "rl_thickness": 2,
+    "rl_length": 800,
+    "rl_shortcut": "<ctrl>+<shift>+l",
 }
 
 

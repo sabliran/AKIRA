@@ -1,13 +1,13 @@
 # Akira
 
-A Linux tray application that shows a floating overlay (image, text, or both) anywhere on the desktop when a global keyboard shortcut is pressed.
+A custom Linux multipurpose tray application that shows a floating overlay (image, text, or both) anywhere on the desktop when a global keyboard shortcut is pressed.
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![PyQt6](https://img.shields.io/badge/PyQt6-6.4%2B-green)
 ![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)
 
 ## Features
-
+- **Multifunctional software** - designed to suit my needs.
 - **Global hotkey** — trigger from any application (default: `Ctrl+Shift+I`)
 - **Image, text, or both** — display a custom image, styled text, or both stacked together
 - **System tray** — lives quietly in the tray; left-click or use the shortcut to toggle

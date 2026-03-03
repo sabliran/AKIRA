@@ -5,6 +5,11 @@ import os
 import sys
 from pathlib import Path
 
+# Force X11/XWayland backend so window positioning (move/setGeometry) works
+# reliably on KDE Plasma Wayland.  XWayland is required anyway (pynput hotkeys).
+os.environ.setdefault('DISPLAY', ':0')
+os.environ.setdefault('QT_QPA_PLATFORM', 'xcb')
+
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
 from PyQt6.QtCore import Qt
@@ -24,6 +29,7 @@ import config_manager
 from display_window import DisplayWindow
 from settings_window import SettingsWindow
 from hotkey_listener import HotkeyListener
+from reading_line import ReadingLine
 
 
 def _make_tray_icon(path: str = "") -> QIcon:
@@ -66,6 +72,12 @@ def main() -> None:
     listener.triggered.connect(display_win.toggle)
     listener.start()
 
+    rl = ReadingLine(config)
+    rl.set_active(config.get("rl_active", False))
+    rl_listener = HotkeyListener(config.get("rl_shortcut", "<ctrl>+<shift>+l"))
+    rl_listener.triggered.connect(rl.toggle)
+    rl_listener.start()
+
     settings_win: SettingsWindow | None = None
 
     def open_settings() -> None:
@@ -75,7 +87,9 @@ def main() -> None:
             settings_win.activateWindow()
             return
 
-        settings_win = SettingsWindow(config)
+        # Reflect current runtime state of the reading line in the dialog
+        live_config = {**config, "rl_active": rl.active}
+        settings_win = SettingsWindow(live_config)
 
         def on_saved(new_cfg: dict) -> None:
             nonlocal config
@@ -83,6 +97,9 @@ def main() -> None:
             config_manager.save(config)
             display_win.update_config(config)
             listener.update_shortcut(config["shortcut"])
+            rl.update_config(config)
+            rl.set_active(config.get("rl_active", False))
+            rl_listener.update_shortcut(config["rl_shortcut"])
             new_icon = _make_tray_icon(config.get("tray_icon_path", ""))
             _export_app_icon(new_icon)
             app.setWindowIcon(new_icon)
