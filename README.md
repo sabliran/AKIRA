@@ -1,4 +1,4 @@
-# This is my cat; Akira
+# This is my cat; Akira!
 
 ![image](https://raw.githubusercontent.com/sabliran/AKIRA/refs/heads/main/unnamed.jpg)
 
