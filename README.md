@@ -1,5 +1,5 @@
 # Akira
-
+![image](https://github.com/sabliran/AKIRA/blob/main/unnamed.jpg)
 A custom Linux multipurpose tray application that shows a floating overlay (image, text, or both) anywhere on the desktop when a global keyboard shortcut is pressed.
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
