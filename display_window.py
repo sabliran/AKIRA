@@ -22,6 +22,7 @@ class DisplayWindow(QWidget):
         self._pdf_doc = None
         self._pdf_path_loaded = ""
         self._pdf_page_idx = 0
+        self._pdf_scroll_accum = 0
         self._setup_window()
         self._build_ui()
         self._refresh_content()
@@ -204,10 +205,15 @@ class DisplayWindow(QWidget):
 
     def wheelEvent(self, event) -> None:
         if self.config.get("mode") == "pdf" and self._pdf_doc:
-            delta = event.angleDelta().y()
-            if delta < 0:
+            self._pdf_scroll_accum += event.angleDelta().y()
+            # Require a full wheel click (120 units) before turning the page.
+            # Remainder is discarded so a fast scroll can't carry into the next page.
+            if self._pdf_scroll_accum <= -120:
+                self._pdf_scroll_accum = 0
                 self._pdf_page_idx = min(self._pdf_page_idx + 1, len(self._pdf_doc) - 1)
-            elif delta > 0:
+                self._render_pdf_page()
+            elif self._pdf_scroll_accum >= 120:
+                self._pdf_scroll_accum = 0
                 self._pdf_page_idx = max(self._pdf_page_idx - 1, 0)
-            self._render_pdf_page()
+                self._render_pdf_page()
             event.accept()
