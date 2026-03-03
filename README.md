@@ -4,6 +4,7 @@ A custom Linux multipurpose tray application that shows a floating overlay (imag
 
 
 
+
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![PyQt6](https://img.shields.io/badge/PyQt6-6.4%2B-green)
 ![Platform](https://img.shields.io/badge/platform-Linux-lightgrey)
