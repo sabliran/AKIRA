@@ -21,8 +21,9 @@ Both lines can change colors and opacity of your liking.And blackout opacity as 
 ## Features
 - **Multifunctional software** — designed to suit my needs.
 - **Global hotkeys** — trigger from any application; all shortcuts are configurable
-- **Image, text, or both** — display a custom image, styled text, or both stacked together so you can reference something
-- **PDF viewer** — display any PDF page in the overlay; scroll wheel navigates pages; configurable render quality    
+- **Up to 4 stacked images** — set 1–4 images in Settings; they display vertically stacked in the overlay; empty slots are hidden automatically
+- **Image, text, or both** — display image(s), styled text, or both together so you can reference something
+- **PDF viewer** — display any PDF page in the overlay; scroll wheel navigates pages; configurable render quality
 - **Reading line** — a horizontal guide that follows the cursor; two modes: thin colored line or full-screen dimmer with a transparent reading slot
 - **Screen dimmer** — dims the entire screen except a transparent slot at the cursor's Y position, helping focus while reading
 - **System tray** — lives quietly in the tray; left-click or use the shortcut to toggle
@@ -63,7 +64,7 @@ python3 main.py
 1. The app icon appears in your system tray after launch.
 2. Press **Ctrl+Shift+I** (or your configured shortcut) to show/hide the overlay.
 3. **Right-click** the tray icon → **Settings…** (or press `Ctrl+Shift+S`) to configure:
-   - **Content tab** — choose Image, Text, Image + Text, or PDF mode
+   - **Content tab** — choose Image, Text, Image + Text, or PDF mode; set up to 4 image paths (Image 1–4) that stack vertically in the overlay
    - **Appearance tab** — colors, opacity, window size, custom tray icon
    - **Shortcut tab** — record global shortcuts for the overlay and for opening Settings
    - **Reading Line tab** — enable/configure the reading line guide
