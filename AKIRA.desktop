@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Akira
+Comment=Display an image or text with a global keyboard shortcut
+Exec=/usr/bin/python3 /var/home/s/Downloads/AKIRA-main/main.py
+Icon=/var/home/s/Downloads/AKIRA-main/unnamed.jpg
+Type=Application
+Categories=Utility;
+Terminal=false
