@@ -227,15 +227,25 @@ class SettingsWindow(QDialog):
         mode_layout.addStretch()
         layout.addWidget(mode_box)
 
-        # Image path
-        self._image_box = QGroupBox("Image file")
-        img_layout = QHBoxLayout(self._image_box)
-        self._image_path = QLineEdit()
-        self._image_path.setPlaceholderText("Path to image file…")
-        browse_btn = QPushButton("Browse…")
-        browse_btn.clicked.connect(self._browse_image)
-        img_layout.addWidget(self._image_path)
-        img_layout.addWidget(browse_btn)
+        # Image paths (up to 4, stacked vertically)
+        self._image_box = QGroupBox("Image files")
+        img_layout = QVBoxLayout(self._image_box)
+        self._image_paths = []
+        for i in range(4):
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            lbl = QLabel(f"Image {i + 1}:")
+            lbl.setFixedWidth(56)
+            field = QLineEdit()
+            field.setPlaceholderText("Path to image file…")
+            btn = QPushButton("Browse…")
+            btn.clicked.connect(lambda _checked, f=field: self._browse_image_field(f))
+            row_layout.addWidget(lbl)
+            row_layout.addWidget(field)
+            row_layout.addWidget(btn)
+            img_layout.addWidget(row)
+            self._image_paths.append(field)
         layout.addWidget(self._image_box)
 
         # Text content
@@ -518,7 +528,10 @@ class SettingsWindow(QDialog):
             self._rb_image.setChecked(True)
         self._on_mode_toggle()
 
-        self._image_path.setText(c["image_path"])
+        paths = [c["image_path"], c.get("image_path_2", ""),
+                 c.get("image_path_3", ""), c.get("image_path_4", "")]
+        for field, path in zip(self._image_paths, paths):
+            field.setText(path)
         self._text_edit.setPlainText(c["text"])
         self._pdf_path.setText(c.get("pdf_path", ""))
         saved_scale = c.get("pdf_scale", 1.0)
@@ -574,13 +587,13 @@ class SettingsWindow(QDialog):
         self._text_box.setVisible(self._rb_text.isChecked() or self._rb_both.isChecked())
         self._pdf_box.setVisible(self._rb_pdf.isChecked())
 
-    def _browse_image(self) -> None:
+    def _browse_image_field(self, field: QLineEdit) -> None:
         path, _ = QFileDialog.getOpenFileName(
             self, "Select Image", "",
             "Images (*.png *.jpg *.jpeg *.gif *.bmp *.webp *.svg *.tiff)",
         )
         if path:
-            self._image_path.setText(path)
+            field.setText(path)
 
     def _browse_tray_icon(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -627,7 +640,10 @@ class SettingsWindow(QDialog):
             mode = "image"
         return {
             "mode": mode,
-            "image_path": self._image_path.text().strip(),
+            "image_path": self._image_paths[0].text().strip(),
+            "image_path_2": self._image_paths[1].text().strip(),
+            "image_path_3": self._image_paths[2].text().strip(),
+            "image_path_4": self._image_paths[3].text().strip(),
             "pdf_path": self._pdf_path.text().strip(),
             "pdf_scale": self._pdf_scale.currentData(),
             "pdf_window_width": self._pdf_win_size.currentData()[0],

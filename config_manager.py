@@ -7,6 +7,9 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 DEFAULTS = {
     "mode": "image",          # "image", "text", "both", or "pdf"
     "image_path": "",
+    "image_path_2": "",
+    "image_path_3": "",
+    "image_path_4": "",
     "pdf_path": "",
     "pdf_scale": 1.0,         # rendering scale for PDF pages
     "pdf_window_width": 900,

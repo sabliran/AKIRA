@@ -58,16 +58,19 @@ class DisplayWindow(QWidget):
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(12)
+        layout.setSpacing(8)
 
-        self._img_label = QLabel()
-        self._img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self._img_label, stretch=3)
+        self._img_labels = []
+        for _ in range(4):
+            lbl = QLabel()
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(lbl, stretch=1)
+            self._img_labels.append(lbl)
 
         self._txt_label = QLabel()
         self._txt_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._txt_label.setWordWrap(True)
-        layout.addWidget(self._txt_label, stretch=1)
+        layout.addWidget(self._txt_label, stretch=0)
 
     # ── Content ────────────────────────────────────────────────────────────
 
@@ -77,28 +80,60 @@ class DisplayWindow(QWidget):
         show_text = mode in ("text", "both")
         show_pdf = mode == "pdf"
 
-        self._img_label.setVisible(show_image or show_pdf)
+        for lbl in self._img_labels:
+            lbl.setVisible(show_image or show_pdf)
         self._txt_label.setVisible(show_text or show_pdf)
 
         if show_pdf:
+            # Only the first label is used for PDF
+            for lbl in self._img_labels[1:]:
+                lbl.setVisible(False)
             self._render_pdf_page()
             return
 
         if show_image:
-            img_h = int((self.height() - 48) * (0.65 if mode == "both" else 1.0))
-            pix = QPixmap(self.config["image_path"]) if self.config["image_path"] else QPixmap()
-            if not pix.isNull():
-                scaled = pix.scaled(
-                    self.width() - 48, img_h,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                self._img_label.setPixmap(scaled)
-                self._img_label.setStyleSheet("")
-            else:
-                self._img_label.setPixmap(QPixmap())
-                self._img_label.setText("(no image set)")
-                self._img_label.setStyleSheet(f"color: {self.config['text_color']};")
+            img_paths = [
+                self.config.get("image_path", ""),
+                self.config.get("image_path_2", ""),
+                self.config.get("image_path_3", ""),
+                self.config.get("image_path_4", ""),
+            ]
+            # Count how many slots have a valid path
+            visible_count = sum(1 for p in img_paths if p)
+            if visible_count == 0:
+                visible_count = 1  # show placeholder in first slot
+
+            slot_h = max(1, (self.height() - 48 - 8 * 3) // 4)
+
+            for lbl, path in zip(self._img_labels, img_paths):
+                if path:
+                    pix = QPixmap(path)
+                    if not pix.isNull():
+                        scaled = pix.scaled(
+                            self.width() - 48, slot_h,
+                            Qt.AspectRatioMode.KeepAspectRatio,
+                            Qt.TransformationMode.SmoothTransformation,
+                        )
+                        lbl.setPixmap(scaled)
+                        lbl.setText("")
+                        lbl.setStyleSheet("")
+                        lbl.setVisible(True)
+                    else:
+                        lbl.setPixmap(QPixmap())
+                        lbl.setText("(invalid image)")
+                        lbl.setStyleSheet(f"color: {self.config['text_color']};")
+                        lbl.setVisible(True)
+                else:
+                    lbl.setPixmap(QPixmap())
+                    lbl.setText("")
+                    lbl.setStyleSheet("")
+                    lbl.setVisible(False)
+
+            # Show placeholder in first slot if nothing is set
+            if visible_count == 1 and not img_paths[0]:
+                self._img_labels[0].setText("(no image set)")
+                self._img_labels[0].setStyleSheet(f"color: {self.config['text_color']};")
+                self._img_labels[0].setVisible(True)
 
         if show_text:
             font = QFont()
@@ -108,17 +143,18 @@ class DisplayWindow(QWidget):
             self._txt_label.setStyleSheet(f"color: {self.config['text_color']};")
 
     def _render_pdf_page(self) -> None:
+        lbl = self._img_labels[0]
         if not _FITZ_AVAILABLE:
-            self._img_label.setText("PyMuPDF not installed.\nRun: pip install PyMuPDF")
-            self._img_label.setStyleSheet(f"color: {self.config['text_color']};")
+            lbl.setText("PyMuPDF not installed.\nRun: pip install PyMuPDF")
+            lbl.setStyleSheet(f"color: {self.config['text_color']};")
             self._txt_label.setText("")
             return
 
         path = self.config.get("pdf_path", "")
         if not path:
-            self._img_label.setPixmap(QPixmap())
-            self._img_label.setText("(no PDF set)")
-            self._img_label.setStyleSheet(f"color: {self.config['text_color']};")
+            lbl.setPixmap(QPixmap())
+            lbl.setText("(no PDF set)")
+            lbl.setStyleSheet(f"color: {self.config['text_color']};")
             self._txt_label.setText("")
             return
 
@@ -128,8 +164,8 @@ class DisplayWindow(QWidget):
                 self._pdf_path_loaded = path
                 self._pdf_page_idx = 0
             except Exception as e:
-                self._img_label.setText(f"Error loading PDF:\n{e}")
-                self._img_label.setStyleSheet(f"color: {self.config['text_color']};")
+                lbl.setText(f"Error loading PDF:\n{e}")
+                lbl.setStyleSheet(f"color: {self.config['text_color']};")
                 self._txt_label.setText("")
                 return
 
@@ -140,9 +176,6 @@ class DisplayWindow(QWidget):
         available_w = self.config.get("pdf_window_width", 900) - 48
         available_h = self.config.get("pdf_window_height", 700) - 72
 
-        # Compute scale so the page renders at exactly the display resolution
-        # (no upscaling later = sharp result). pdf_scale multiplies this for
-        # extra quality (2× = super-sampled, then scaled down).
         rect = page.rect
         fit_scale = min(available_w / rect.width, available_h / rect.height)
         quality = max(0.5, float(self.config.get("pdf_scale", 1.0)))
@@ -155,16 +188,14 @@ class DisplayWindow(QWidget):
                      QImage.Format.Format_RGB888)
         qt_pix = QPixmap.fromImage(img)
 
-        # Only scale down if quality > 1 (super-sampled); at 1× the pixmap
-        # already matches the display area exactly.
         if quality > 1.0:
             qt_pix = qt_pix.scaled(
                 available_w, available_h,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
-        self._img_label.setPixmap(qt_pix)
-        self._img_label.setStyleSheet("")
+        lbl.setPixmap(qt_pix)
+        lbl.setStyleSheet("")
 
         font = QFont()
         font.setPointSize(11)
