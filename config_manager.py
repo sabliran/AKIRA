@@ -34,6 +34,8 @@ DEFAULTS = {
     "rl_block_color": "#000000",
     "rl_block_opacity": 180,     # 0-255
     "rl_slot_height": 40,        # px — transparent reading slot height in block mode
+    "rl_scroll_resize": False,   # Ctrl+scroll resizes the reading slot live
+    "rl_scroll_opacity": False,  # Ctrl+Shift+scroll changes the dimmer opacity live
     "rl_shortcut": "<ctrl>+<shift>+l",
 }
 

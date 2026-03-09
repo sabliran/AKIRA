@@ -124,10 +124,14 @@ class ReadingLine(QWidget):
 
         Block mode tracks cursor via QCursor.pos() on each timer tick so it
         doesn't need mouseMoveEvent; scroll/clicks pass through freely.
+        Exception: when rl_scroll_resize is enabled, the overlay stays
+        interactive so Ctrl+scroll wheel events reach this widget.
         """
         block = self._effective_mode() == "block"
+        scroll_active = (self.config.get("rl_scroll_resize", False)
+                         or self.config.get("rl_scroll_opacity", False))
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents,
-                          self._locked or block)
+                          self._locked or (block and not scroll_active))
 
     # ── Qt overrides ───────────────────────────────────────────────────────
 
@@ -137,6 +141,32 @@ class ReadingLine(QWidget):
         if not self._locked:
             self._cy = int(pos.y())
         self.update()
+
+    def wheelEvent(self, event) -> None:
+        mods = event.modifiers()
+        ctrl  = bool(mods & Qt.KeyboardModifier.ControlModifier)
+        shift = bool(mods & Qt.KeyboardModifier.ShiftModifier)
+        block = self._effective_mode() == "block"
+        delta = event.angleDelta().y()
+
+        if (block and ctrl and shift and self.config.get("rl_scroll_opacity", False)):
+            step = max(2, abs(delta) // 10)
+            current = self.config.get("rl_block_opacity", 180)
+            self.config["rl_block_opacity"] = (
+                max(current - step, 0) if delta > 0 else min(current + step, 255)
+            )
+            self.update()
+            event.accept()
+        elif (block and ctrl and not shift and self.config.get("rl_scroll_resize", False)):
+            step = max(2, abs(delta) // 10)
+            current = self.config.get("rl_slot_height", 40)
+            self.config["rl_slot_height"] = (
+                min(current + step, 400) if delta > 0 else max(current - step, 4)
+            )
+            self.update()
+            event.accept()
+        else:
+            event.ignore()
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.RightButton:

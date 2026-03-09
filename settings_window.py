@@ -493,6 +493,12 @@ class SettingsWindow(QDialog):
         rl_slot_layout.addWidget(self._rl_slot_height_label)
         form.addRow("Reading slot height:", rl_slot_row)
 
+        self._rl_scroll_resize = QCheckBox("Ctrl+scroll resizes the reading slot height live")
+        form.addRow("", self._rl_scroll_resize)
+
+        self._rl_scroll_opacity = QCheckBox("Ctrl+Shift+scroll changes the dimmer opacity live")
+        form.addRow("", self._rl_scroll_opacity)
+
         layout.addWidget(appearance_box)
 
         # Shortcut group
@@ -570,6 +576,8 @@ class SettingsWindow(QDialog):
         self._rl_block_opacity_slider.setValue(c.get("rl_block_opacity", 180))
         self._rl_thickness.setValue(c.get("rl_thickness", 2))
         self._rl_slot_height.setValue(c.get("rl_slot_height", 40))
+        self._rl_scroll_resize.setChecked(c.get("rl_scroll_resize", False))
+        self._rl_scroll_opacity.setChecked(c.get("rl_scroll_opacity", False))
         self._on_rl_mode_toggle()
         self._rl_shortcut_label.setText(pynput_to_human(c.get("rl_shortcut", "<ctrl>+<shift>+l")))
 
@@ -667,6 +675,8 @@ class SettingsWindow(QDialog):
             "rl_block_opacity": self._rl_block_opacity_slider.value(),
             "rl_thickness": self._rl_thickness.value(),
             "rl_slot_height": self._rl_slot_height.value(),
+            "rl_scroll_resize": self._rl_scroll_resize.isChecked(),
+            "rl_scroll_opacity": self._rl_scroll_opacity.isChecked(),
             "rl_shortcut": self._rl_current_shortcut,
         }
 
